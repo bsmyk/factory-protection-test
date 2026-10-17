@@ -1,21 +1,27 @@
 """A tiny web app: python3 app.py serves it on $PORT."""
+import html
 import os
+from urllib.parse import parse_qs
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 def home_page(query: str) -> str:
-    return "<!doctype html><title>Greeter</title><h1>Welcome</h1>"
+    name = parse_qs(query).get("name", ["visitor"])[0]
+    return f"<!doctype html><title>Greeter</title><h1>Welcome</h1><p>Hello, {html.escape(name, quote=True)}!</p>"
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path, _, query = self.path.partition("?")
-        if path != "/":
+        if path == "/health":
+            body, content_type = b"ok", "text/plain; charset=utf-8"
+        elif path == "/":
+            body, content_type = home_page(query).encode(), "text/html; charset=utf-8"
+        else:
             self.send_error(404)
             return
-        body = home_page(query).encode()
         self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
